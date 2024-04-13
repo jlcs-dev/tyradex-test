@@ -1,20 +1,29 @@
 import json
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import sqlite3
+
 
 class LocalizedName(BaseModel):
     fr: str
     en: str
     jp: str
 
+
 class PokemonType(BaseModel):
     name: str
     image: str
 
+
+class Sprites(BaseModel):
+    regular: Optional[str] = None
+    shiny: Optional[str] = None
+
+
 class Pokemon(BaseModel):
     pokedex_id : int
     name: LocalizedName
+    sprites: Sprites
     types: List[PokemonType]
     generation: int
 
@@ -26,7 +35,8 @@ try:
     con.executescript("""
     CREATE TABLE pokemon(
         dex_id INTEGER PRIMARY KEY NOT NULL,
-        name VARCHAR(50),
+        name JSON,
+        generation INTEGER,
         json_sprites JSON,
         url_cri VARCHAR(255)
     );
@@ -43,12 +53,11 @@ try:
     );
 """)
 
-    with open('./pokemons.json') as f:
+    with open('./migrations/pokemons.json') as f:
         d = json.load(f)
         pokemons: List[Pokemon] = [Pokemon(**p) for p in d]
-        print(pokemons[0])
-        
-    
+        con.executemany("INSERT INTO pokemon(dex_id,name,generation,json_sprites) VALUES(?,?,?,?)", map(lambda x:(x.pokedex_id, json.dumps(x.name,default=lambda y: y.__dict__), x.generation, json.dumps(x.sprites,default=lambda y: y.__dict__)),pokemons))
+           
     con.commit()
     print("Coommited !")
 except sqlite3.Error as e:

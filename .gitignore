@@ -1,2 +1,4 @@
-pokemon.json
 pokedex.db
+*.json
+!pokemons.json
+!types.json
